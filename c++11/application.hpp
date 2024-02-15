@@ -14,8 +14,40 @@
 #define APPLICATION_HPP
 
 #include <iostream>
+#include <string>
 #include <csignal>
 #include <dds/core/ddscore.hpp>
+
+#define STR_ME( x ) ( # x )
+
+namespace colours {
+    enum Enum {
+        PURPLE = 0,
+        MIN_COLOUR = PURPLE,
+        BLUE,
+        RED,
+        GREEN,
+        YELLOW,
+        CYAN,
+        MAGENTA,
+        ORANGE,
+
+        MAX_COLOUR
+    };
+
+    const std::string ToStr[] = {
+        STR_ME (PURPLE),
+        STR_ME (BLUE),
+        STR_ME (RED),
+        STR_ME (GREEN),
+        STR_ME (YELLOW),
+        STR_ME (CYAN),
+        STR_ME (MAGENTA),
+        STR_ME (ORANGE)
+    };
+
+    inline Enum &operator++(Enum &e) { return e = Enum(e + 1); }
+};
 
 namespace application {
 
@@ -44,16 +76,19 @@ namespace application {
         ParseReturn parse_result;
         unsigned int domain_id;
         unsigned int sample_count;
+        std::string color; 
         rti::config::Verbosity verbosity;
 
         ApplicationArguments(
             ParseReturn parse_result_param,
             unsigned int domain_id_param,
             unsigned int sample_count_param,
+            std::string color_param,
             rti::config::Verbosity verbosity_param)
             : parse_result(parse_result_param),
             domain_id(domain_id_param),
             sample_count(sample_count_param),
+            color(color_param),
             verbosity(verbosity_param) {}
     };
 
@@ -78,8 +113,21 @@ namespace application {
             verbosity = rti::config::Verbosity::EXCEPTION;
             break;
         }
-    }
+    }          
 
+    inline void set_color(
+        std::string& color,
+        const std::string& param) {
+
+        color = colours::ToStr[colours::BLUE];
+        for (int c = colours::MIN_COLOUR; c != colours::MAX_COLOUR; c++) {
+            if (0 == param.compare(colours::ToStr[c])) {
+                color = param;
+                break;
+            }
+        }
+    }
+    
     // Parses application arguments for example.
     inline ApplicationArguments parse_arguments(int argc, char *argv[])
     {
@@ -87,6 +135,7 @@ namespace application {
         bool show_usage = false;
         ParseReturn parse_result = ParseReturn::ok;
         unsigned int domain_id = 0;
+        std::string color = colours::ToStr[colours::BLUE];
         unsigned int sample_count = (std::numeric_limits<unsigned int>::max)();
         rti::config::Verbosity verbosity(rti::config::Verbosity::EXCEPTION);
 
@@ -100,6 +149,12 @@ namespace application {
             && (strcmp(argv[arg_processing], "-s") == 0
             || strcmp(argv[arg_processing], "--sample-count") == 0)) {
                 sample_count = atoi(argv[arg_processing + 1]);
+                arg_processing += 2;
+            
+            } else if ((argc > arg_processing + 1)
+            && (strcmp(argv[arg_processing], "-c") == 0
+            || strcmp(argv[arg_processing], "--color") == 0)) {
+                set_color(color, argv[arg_processing + 1]);
                 arg_processing += 2;
             } else if ((argc > arg_processing + 1)
             && (strcmp(argv[arg_processing], "-v") == 0
@@ -127,13 +182,15 @@ namespace application {
             "    -s, --sample_count <int>   Number of samples to receive before\n"\
             "                               cleanly shutting down. \n"
             "                               Default: infinite\n"
+            "    -c, --color      <string>  Colour of square\n"\
+            "                               Default: BLUE\n"\
             "    -v, --verbosity    <int>   How much debugging output to show.\n"\
             "                               Range: 0-3 \n"
             "                               Default: 1"
             << std::endl;
         }
 
-        return ApplicationArguments(parse_result, domain_id, sample_count, verbosity);
+        return ApplicationArguments(parse_result, domain_id, sample_count, color, verbosity);
     }
 
 }  // namespace application

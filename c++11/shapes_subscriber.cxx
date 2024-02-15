@@ -33,41 +33,11 @@
 #include "shapes.hpp"
 #include "application.hpp"  // for command line parsing and ctrl-c
 
-#define STR_ME( x ) ( # x )
-
 using std::cout;
 using std::endl;
 using std::deque;
 using std::string;
 using std::stringstream;
-
-namespace colours {
-    enum Enum {
-        PURPLE = 0,
-        BLUE,
-        RED,
-        GREEN,
-        YELLOW,
-        CYAN,
-        MAGENTA,
-        ORANGE,
-
-        MAX_COLOUR
-    };
-
-    const string ToStr[] = {
-        STR_ME (PURPLE),
-        STR_ME (BLUE),
-        STR_ME (RED),
-        STR_ME (GREEN),
-        STR_ME (YELLOW),
-        STR_ME (CYAN),
-        STR_ME (MAGENTA),
-        STR_ME (ORANGE)
-    };
-
-    inline Enum &operator++(Enum &e) { return e = Enum(e + 1); }
-};
 
 #define COLOR_PURPLE COLOR_WHITE + 1
 #define COLOR_ORANGE COLOR_WHITE + 2
@@ -90,7 +60,7 @@ void display_log(const string& logline) {
 
 void display_sample(const ShapeTypeExtended& shape) {
     
-    for (int c = colours::PURPLE; c != colours::MAX_COLOUR; c++) {
+    for (int c = colours::MIN_COLOUR; c != colours::MAX_COLOUR; c++) {
         if (0 == shape.color().compare(colours::ToStr[c])) {
 
             if (has_colors()) {

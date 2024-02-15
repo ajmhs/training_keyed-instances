@@ -11,7 +11,7 @@
 */
 
 #include <iostream>
-
+#include <string>
 #include <dds/pub/ddspub.hpp>
 #include <rti/util/util.hpp>      // for sleep()
 #include <rti/config/Logger.hpp>  // for logging
@@ -27,8 +27,9 @@
 
 #include "application.hpp"  // for command line parsing and ctrl-c
 #include "shapes.hpp"
+#include <cmath>
 
-void run_publisher_application(unsigned int domain_id, unsigned int sample_count)
+void run_publisher_application(unsigned int domain_id, unsigned int sample_count, const std::string& color)
 {
     // DDS objects behave like shared pointers or value types
     // (see https://community.rti.com/best-practices/use-modern-c-types-correctly)
@@ -37,7 +38,7 @@ void run_publisher_application(unsigned int domain_id, unsigned int sample_count
     dds::domain::DomainParticipant participant(domain_id);
 
     // Create a Topic with a name and a datatype
-    dds::topic::Topic< ::ShapeTypeExtended> topic(participant, "Example ShapeTypeExtended");
+    dds::topic::Topic< ::ShapeTypeExtended> topic(participant, "Square");
 
     // Create a Publisher
     dds::pub::Publisher publisher(participant);
@@ -46,18 +47,41 @@ void run_publisher_application(unsigned int domain_id, unsigned int sample_count
     dds::pub::DataWriter< ::ShapeTypeExtended> writer(publisher, topic);
 
     ::ShapeTypeExtended data;
-    // Main loop, write data
-    for (unsigned int samples_written = 0;
-    !application::shutdown_requested && samples_written < sample_count;
-    samples_written++) {
-        // Modify the data to be written here
-        std::cout << "Writing ::ShapeTypeExtended, count " << samples_written << std::endl;
 
+    // Tell Connext that we will be modifying a particular instance
+    dds::core::InstanceHandle instance_handle = writer.register_instance(data);
+
+    const int left = 15, top = 15, right = 248, bottom = 278; // limits
+    const int shape_size = 30;
+    int x = left-shape_size, y = bottom - top / 2;
+    const float AMPLITUDE = 100.0f;
+    const float FREQUENCY = 0.0475f;
+
+    data.color(color);
+    data.shapesize(shape_size);
+    data.fillKind(ShapeFillKind::SOLID_FILL);
+    
+    // Main loop, write data
+    unsigned int samples_written = 0;
+    for (; !application::shutdown_requested && samples_written < sample_count; ++samples_written) {
+
+        if (++x > right)
+          x = left-shape_size;
+
+        y = (int)(bottom - top) / 2 + AMPLITUDE * std::sin(FREQUENCY * x);
+        
+        data.x(x);
+        data.y(y);
+
+        std::cout << "Writing a " << color << " square at (" << x << "," << y << "), count: " << samples_written << std::endl;
+        
         writer.write(data);
 
-        // Send once every second
         rti::util::sleep(dds::core::Duration(1));
     }
+
+    // de-register instance
+    writer.dispose_instance(instance_handle);
 }
 
 int main(int argc, char *argv[])
@@ -78,7 +102,7 @@ int main(int argc, char *argv[])
     rti::config::Logger::instance().verbosity(arguments.verbosity);
 
     try {
-        run_publisher_application(arguments.domain_id, arguments.sample_count);
+        run_publisher_application(arguments.domain_id, arguments.sample_count, arguments.color);
     } catch (const std::exception& ex) {
         // This will catch DDS exceptions
         std::cerr << "Exception in run_publisher_application(): " << ex.what()
